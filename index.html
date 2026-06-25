@@ -6,6 +6,7 @@
   <title>Priorización TD CCB | Impacto vs Facilidad</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --ccb-blue: #0b2341;
@@ -592,7 +593,7 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
      * STORAGE_MODE = 'firebase' o 'supabase' para producción.
      * En producción, complete PRODUCTION_CONFIG y las funciones TODO del adaptador.
      **********************************************************************/
-    const STORAGE_MODE = 'local';
+    const STORAGE_MODE = 'supabase';
     const PRODUCTION_CONFIG = {
       firebase: {
         apiKey: 'TODO_FIREBASE_API_KEY',
@@ -600,8 +601,8 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
         projectId: 'TODO_PROJECT_ID'
       },
       supabase: {
-        url: 'TODO_SUPABASE_URL',
-        anonKey: 'TODO_SUPABASE_ANON_KEY'
+        url: 'https://jxrgsjqnniwhxmvjjryy.supabase.co',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4cmdzanFubml3aHhtdmpqcnl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNDIxOTksImV4cCI6MjA5NzkxODE5OX0.MnNJ8cUBNfgeJVbl0QYDOhPrtUTL5Mb83jzOEd4vkF8'
       }
     };
 
@@ -714,19 +715,20 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
     let initiatives = [];
     let votes = [];
     let matrixChart = null;
+    let supabaseClient = null;
     let participantMode = false;
     let voterSessionId = '';
 
     document.addEventListener('DOMContentLoaded', initApp);
 
-    function initApp() {
+    async function initApp() {
       document.getElementById('storageModePill').textContent = STORAGE_MODE === 'local' ? 'Modo demo local' : 'Modo producción: ' + STORAGE_MODE;
       participantMode = isParticipantMode();
       if (participantMode) document.body.classList.add('participant-mode');
       voterSessionId = getOrCreateVoterSessionId();
       renderVoterSessionBox();
       bindNavigation();
-      loadData();
+      await loadData();
       renderCriteria();
       renderInitiativeSelectors();
       renderAdmin();
@@ -762,23 +764,69 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
       if (viewId === 'adminView') { renderAdmin(); buildQR(); }
     }
 
-    function loadData() {
-      if (STORAGE_MODE !== 'local') {
-        // TODO PRODUCCIÓN: reemplazar por fetch desde Firebase/Supabase.
-        console.warn('Modo producción seleccionado. Complete adaptador de persistencia.');
+    function getSupabaseClient() {
+      if (!supabaseClient) {
+        if (typeof supabase === 'undefined') {
+          throw new Error('No cargó la librería Supabase. Verifique conexión a internet.');
+        }
+        supabaseClient = supabase.createClient(PRODUCTION_CONFIG.supabase.url, PRODUCTION_CONFIG.supabase.anonKey);
+      }
+      return supabaseClient;
+    }
+
+    async function loadData() {
+      if (STORAGE_MODE === 'supabase') {
+        try {
+          const db = getSupabaseClient();
+          const { data: initiativesData, error: initiativesError } = await db
+            .from('initiatives')
+            .select('*')
+            .order('code', { ascending: true });
+
+          if (initiativesError) throw initiativesError;
+
+          const { data: votesData, error: votesError } = await db
+            .from('votes')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+          if (votesError) throw votesError;
+
+          initiatives = (initiativesData || []).map(i => ({
+            id: i.id,
+            code: i.code || '',
+            name: i.name || '',
+            description: i.description || '',
+            area: i.area || '',
+            owner: i.owner || '',
+            state: i.state || 'Formulada'
+          }));
+
+          votes = (votesData || []).map(v => ({
+            id: v.id,
+            initiativeId: v.initiative_id,
+            voterRole: v.voter_role || '',
+            voterSessionId: v.voter_session || v.voter_hash || '',
+            scores: v.scores || {},
+            createdAt: v.created_at,
+            voterHash: v.voter_hash || simpleHash((v.voter_session || '') + '|' + v.initiative_id)
+          }));
+
+          return;
+        } catch (err) {
+          alert('Error conectando con Supabase: ' + err.message);
+          console.error(err);
+          initiatives = sampleInitiatives;
+          votes = [];
+          return;
+        }
       }
 
-      // Versión cerrada: la plataforma trabaja con 9 iniciativas.
-      // Si ya existen 9 iniciativas guardadas, respeta sus ediciones locales
-      // incluso si se cambiaron nombres, códigos, áreas o resúmenes.
-      // Si hay más o menos de 9, restaura las 9 oficiales precargadas.
       const storedInitiatives = JSON.parse(localStorage.getItem(LS_INITIATIVES) || 'null');
-
       initiatives = Array.isArray(storedInitiatives) && storedInitiatives.length === 9
         ? storedInitiatives
         : sampleInitiatives;
 
-      // Mantener solo votos asociados a las 9 iniciativas vigentes.
       const officialIds = new Set(initiatives.map(i => i.id));
       votes = JSON.parse(localStorage.getItem(LS_VOTES) || '[]')
         .filter(v => officialIds.has(v.initiativeId))
@@ -787,9 +835,7 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
     }
 
     function saveData() {
-      if (STORAGE_MODE !== 'local') {
-        // TODO PRODUCCIÓN: persistir en Firebase/Supabase.
-      }
+      if (STORAGE_MODE === 'supabase') return;
       localStorage.setItem(LS_INITIATIVES, JSON.stringify(initiatives));
       localStorage.setItem(LS_VOTES, JSON.stringify(votes));
     }
@@ -866,7 +912,7 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
       return votes.some(v => v.voterSessionId === sessionId && v.initiativeId === initiativeId);
     }
 
-    function submitVote(e) {
+    async function submitVote(e) {
       e.preventDefault();
       const initiativeId = document.getElementById('initiativeSelect').value;
       const voterRole = document.getElementById('voterRole').value.trim();
@@ -875,7 +921,7 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
       const duplicate = hasVotedForInitiative(voterSessionId, initiativeId);
       if (duplicate) {
         renderInitiativeSelectors();
-        return showVoteAlert('Ya existe una evaluación local para este participante y esta iniciativa. La iniciativa se retiró solo de su lista personal.', 'error');
+        return showVoteAlert('Ya existe una evaluación para este participante y esta iniciativa. La iniciativa se retiró solo de su lista personal.', 'error');
       }
 
       const scores = {};
@@ -885,7 +931,37 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
       });
       if (Object.keys(scores).length !== 12) return showVoteAlert('Debe calificar todos los criterios antes de enviar.', 'error');
 
-      votes.push({ id: cryptoId(), initiativeId, voterRole, voterSessionId, scores, createdAt: new Date().toISOString(), voterHash: simpleHash(voterSessionId + '|' + initiativeId) });
+      const vote = { id: cryptoId(), initiativeId, voterRole, voterSessionId, scores, createdAt: new Date().toISOString(), voterHash: simpleHash(voterSessionId + '|' + initiativeId) };
+
+      if (STORAGE_MODE === 'supabase') {
+        try {
+          const db = getSupabaseClient();
+          const { error } = await db.from('votes').insert({
+            initiative_id: vote.initiativeId,
+            voter_session: vote.voterSessionId,
+            voter_role: vote.voterRole,
+            scores: vote.scores
+          });
+          if (error) throw error;
+          showVoteAlert('Evaluación registrada correctamente. Puede continuar con otra iniciativa pendiente.', 'success');
+          resetVoteForm(false);
+          document.getElementById('voterRole').value = voterRole;
+          await loadData();
+          renderInitiativeSelectors();
+          renderDashboard();
+          return;
+        } catch (err) {
+          if (err.code === '23505' || String(err.message || '').toLowerCase().includes('duplicate')) {
+            await loadData();
+            renderInitiativeSelectors();
+            return showVoteAlert('Esta iniciativa ya fue evaluada por este participante.', 'error');
+          }
+          console.error(err);
+          return showVoteAlert('Error guardando voto en Supabase: ' + err.message, 'error');
+        }
+      }
+
+      votes.push(vote);
       saveData();
       showVoteAlert('Evaluación registrada correctamente. Puede continuar con otra iniciativa pendiente.', 'success');
       resetVoteForm(false);
@@ -906,7 +982,7 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
       document.getElementById('voteAlert').innerHTML = `<div class="alert ${cls}">${escapeHtml(message)}</div>`;
     }
 
-    function submitInitiative(e) {
+    async function submitInitiative(e) {
       e.preventDefault();
       const id = document.getElementById('initiativeId').value || cryptoId();
       const record = {
@@ -918,9 +994,24 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
         owner: document.getElementById('initiativeOwner').value.trim(),
         state: document.getElementById('initiativeState').value
       };
-      const idx = initiatives.findIndex(i => i.id === id);
-      if (idx >= 0) initiatives[idx] = record; else initiatives.push(record);
-      saveData();
+      if (STORAGE_MODE === 'supabase') {
+        try {
+          const db = getSupabaseClient();
+          const { error } = await db.from('initiatives').upsert({
+            id: record.id, code: record.code, name: record.name, description: record.description,
+            area: record.area, owner: record.owner, state: record.state, updated_at: new Date().toISOString()
+          });
+          if (error) throw error;
+          await loadData();
+        } catch (err) {
+          alert('Error guardando iniciativa en Supabase: ' + err.message);
+          return;
+        }
+      } else {
+        const idx = initiatives.findIndex(i => i.id === id);
+        if (idx >= 0) initiatives[idx] = record; else initiatives.push(record);
+        saveData();
+      }
       resetInitiativeForm();
       renderInitiativeSelectors();
       renderAdmin();
@@ -941,13 +1032,25 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function deleteInitiative(id) {
+    async function deleteInitiative(id) {
       const i = initiatives.find(x => x.id === id);
       if (!i) return;
       if (!confirm(`¿Eliminar la iniciativa "${i.name}"? También se eliminarán sus votos demo.`)) return;
-      initiatives = initiatives.filter(x => x.id !== id);
-      votes = votes.filter(v => v.initiativeId !== id);
-      saveData();
+      if (STORAGE_MODE === 'supabase') {
+        try {
+          const db = getSupabaseClient();
+          const { error } = await db.from('initiatives').delete().eq('id', id);
+          if (error) throw error;
+          await loadData();
+        } catch (err) {
+          alert('Error eliminando iniciativa en Supabase: ' + err.message);
+          return;
+        }
+      } else {
+        initiatives = initiatives.filter(x => x.id !== id);
+        votes = votes.filter(v => v.initiativeId !== id);
+        saveData();
+      }
       renderInitiativeSelectors();
       renderAdmin();
       renderDashboard();
