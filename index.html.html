@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Priorización TD CCB | Impacto vs Facilidad</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --ccb-blue: #0b2341;
+      --ccb-blue-2: #143b66;
+      --ccb-sky: #eaf2fb;
+      --ccb-gray: #f4f6f8;
+      --ccb-line: #d9e0e8;
+      --ccb-text: #17202a;
+      --ccb-muted: #617083;
+      --ccb-green: #1f8a5b;
+      --ccb-yellow: #d8a400;
+      --ccb-orange: #d97000;
+      --ccb-red: #b72e2e;
+      --white: #ffffff;
+      --shadow: 0 10px 30px rgba(11, 35, 65, 0.10);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+      color: var(--ccb-text);
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--ccb-blue) 0%, var(--ccb-blue-2) 100%);
+      color: var(--white);
+      padding: 28px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    }
+
+    .header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.2vw, 2.15rem);
+      letter-spacing: -0.03em;
+    }
+
+    .brand p {
+      margin: 6px 0 0;
+      color: #d8e7f7;
+      max-width: 780px;
+      line-height: 1.35;
+    }
+
+    .mode-pill {
+      padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,0.24);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+      font-weight: 700;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    nav {
+      max-width: 1280px;
+      margin: 18px auto 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.10);
+      color: var(--white);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+
+    .tab-btn.active, .tab-btn:hover {
+      background: var(--white);
+      color: var(--ccb-blue);
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 26px auto 60px;
+      padding: 0 20px;
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--ccb-line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 4; }
+    .span-3 { grid-column: span 3; }
+
+    h2, h3, h4 { color: var(--ccb-blue); margin-top: 0; }
+    h2 { font-size: 1.45rem; margin-bottom: 8px; }
+    h3 { font-size: 1.1rem; margin-bottom: 10px; }
+    h4 { font-size: 1rem; margin-bottom: 8px; }
+    p.help, .help { color: var(--ccb-muted); line-height: 1.45; font-size: 0.95rem; }
+
+    label {
+      display: block;
+      font-weight: 800;
+      color: var(--ccb-blue);
+      margin-bottom: 7px;
+      font-size: 0.92rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--ccb-line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      font: inherit;
+      background: #fff;
+      color: var(--ccb-text);
+      outline: none;
+      transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--ccb-blue-2);
+      box-shadow: 0 0 0 3px rgba(20,59,102,0.12);
+    }
+
+    textarea { min-height: 120px; resize: vertical; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .field-12 { grid-column: span 12; }
+    .field-6 { grid-column: span 6; }
+    .field-4 { grid-column: span 4; }
+    .field-3 { grid-column: span 3; }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .btn-primary { background: var(--ccb-blue); color: var(--white); }
+    .btn-secondary { background: var(--ccb-sky); color: var(--ccb-blue); }
+    .btn-danger { background: #feecec; color: var(--ccb-red); }
+    .btn-success { background: #e8f6ef; color: var(--ccb-green); }
+    .btn-warning { background: #fff5d6; color: #8b6500; }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+
+    th, td {
+      padding: 11px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--ccb-line);
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    th {
+      background: var(--ccb-blue);
+      color: var(--white);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    tr:hover td { background: #fafcff; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .badge-green { background: #e8f6ef; color: var(--ccb-green); }
+    .badge-blue { background: #eaf2fb; color: var(--ccb-blue-2); }
+    .badge-yellow { background: #fff5d6; color: #9a7100; }
+    .badge-red { background: #feecec; color: var(--ccb-red); }
+    .badge-gray { background: #edf1f5; color: #526171; }
+
+    .kpi {
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid var(--ccb-line);
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+    }
+
+    .kpi .value {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--ccb-blue);
+      letter-spacing: -0.04em;
+    }
+
+    .kpi .label { color: var(--ccb-muted); font-weight: 800; }
+
+    .criteria-block {
+      border: 1px solid var(--ccb-line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+
+    .criteria-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: start;
+      margin-bottom: 10px;
+    }
+
+    .criteria-title { font-weight: 900; color: var(--ccb-blue); }
+    .criteria-desc { color: var(--ccb-muted); font-size: 0.9rem; line-height: 1.35; margin-top: 4px; }
+
+    .score-options {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .score-options input { display: none; }
+    .score-options label {
+      margin: 0;
+      border: 1px solid var(--ccb-line);
+      border-radius: 12px;
+      padding: 10px 6px;
+      text-align: center;
+      cursor: pointer;
+      background: #f9fbfd;
+      color: var(--ccb-muted);
+      font-weight: 900;
+      transition: 0.15s ease;
+    }
+
+    .score-options input:checked + label {
+      background: var(--ccb-blue);
+      color: var(--white);
+      border-color: var(--ccb-blue);
+      box-shadow: 0 6px 14px rgba(11,35,65,0.18);
+    }
+
+    .alert {
+      padding: 12px 14px;
+      border-radius: 14px;
+      margin: 12px 0;
+      border: 1px solid transparent;
+      font-weight: 700;
+    }
+
+    .alert-info { background: #eaf2fb; color: var(--ccb-blue); border-color: #c9dff4; }
+    .alert-success { background: #e8f6ef; color: var(--ccb-green); border-color: #c7ead8; }
+    .alert-error { background: #feecec; color: var(--ccb-red); border-color: #f6caca; }
+    .alert-warning { background: #fff5d6; color: #806000; border-color: #ffe39b; }
+
+    .qr-wrap {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    #qrCode {
+      padding: 14px;
+      background: white;
+      border-radius: 14px;
+      border: 1px solid var(--ccb-line);
+      display: inline-block;
+      min-width: 150px;
+      min-height: 150px;
+    }
+
+    .chart-wrap { min-height: 460px; position: relative; }
+
+    .ranking-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .rank-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--ccb-line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .rank-index {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--ccb-blue);
+      color: white;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .rank-main { flex: 1; min-width: 0; }
+    .rank-main strong { display: block; color: var(--ccb-blue); }
+    .rank-main span { color: var(--ccb-muted); font-size: 0.86rem; }
+    .rank-score { font-weight: 900; color: var(--ccb-blue); white-space: nowrap; }
+
+    .small { font-size: 0.84rem; color: var(--ccb-muted); }
+    .muted { color: var(--ccb-muted); }
+    .hidden { display: none !important; }
+
+    .footer-note {
+      color: var(--ccb-muted);
+      font-size: 0.85rem;
+      margin-top: 18px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 980px) {
+      .span-8, .span-6, .span-4, .span-3 { grid-column: span 12; }
+      .field-6, .field-4, .field-3 { grid-column: span 12; }
+      header { position: static; }
+      .chart-wrap { min-height: 380px; }
+    }
+
+    @media (max-width: 620px) {
+      main { padding: 0 12px; }
+      .card { padding: 16px; }
+      .score-options { grid-template-columns: repeat(5, minmax(42px, 1fr)); }
+      th, td { font-size: 0.82rem; padding: 9px 7px; }
+      .button-row button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <h1>Priorización de Iniciativas TD</h1>
+        <p>Herramienta ejecutiva para calificar impacto, facilidad de ejecución, consolidar votos del comité y ubicar iniciativas en matriz de decisión.</p>
+      </div>
+      <div class="mode-pill" id="storageModePill">Modo demo local</div>
+    </div>
+    <nav>
+      <button class="tab-btn active" data-view="voteView">Votar</button>
+      <button class="tab-btn" data-view="dashboardView">Resultados</button>
+      <button class="tab-btn" data-view="adminView">Administración</button>
+      <button class="tab-btn" data-view="techView">Producción</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="voteView" class="view active">
+      <div class="grid">
+        <div class="card span-12">
+          <h2>Formulario de evaluación</h2>
+          <p class="help">Califique cada criterio de 1 a 5. En facilidad, una calificación alta representa mejores condiciones de ejecución, menor riesgo o menor complejidad relativa.</p>
+          <div id="voterSessionBox" class="voter-session"></div>
+          <div id="voteAlert"></div>
+          <form id="voteForm">
+            <div class="form-row">
+              <div class="field-6">
+                <label for="voterRole">Rol / área del evaluador</label>
+                <input id="voterRole" required placeholder="Ej. Dirección TD, Datos, Procesos, Servicios Digitales" />
+              </div>
+              <div class="field-6">
+                <label for="initiativeSelect">Iniciativa a evaluar</label>
+                <select id="initiativeSelect" required></select>
+              </div>
+            </div>
+            <div id="selectedInitiativeInfo" class="alert alert-info hidden"></div>
+            <h3>Criterios de Impacto</h3>
+            <div id="impactCriteria"></div>
+            <h3>Criterios de Facilidad de ejecución</h3>
+            <div id="executionCriteria"></div>
+            <div class="button-row">
+              <button type="submit" class="btn-primary">Enviar evaluación</button>
+              <button type="button" class="btn-secondary" onclick="resetVoteForm()">Limpiar formulario</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="dashboardView" class="view">
+      <div class="grid">
+        <div class="card span-12">
+          <div class="button-row" style="justify-content: space-between;">
+            <div>
+              <h2>Dashboard ejecutivo</h2>
+              <p class="help">Resultados consolidados por promedio de evaluaciones. La matriz orienta la conversación, no reemplaza el juicio del Comité.</p>
+            </div>
+            <div class="button-row">
+              <button class="btn-secondary" onclick="exportCSV()">Exportar CSV</button>
+              <button class="btn-secondary" onclick="exportJSON()">Descargar JSON</button>
+              <button class="btn-danger" onclick="clearVotes()">Limpiar votos demo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card span-3"><div class="kpi"><div class="value" id="kpiInitiatives">0</div><div class="label">Iniciativas</div></div></div>
+        <div class="card span-3"><div class="kpi"><div class="value" id="kpiVotes">0</div><div class="label">Evaluaciones</div></div></div>
+        <div class="card span-3"><div class="kpi"><div class="value" id="kpiQuickWins">0</div><div class="label">Ganancias rápidas</div></div></div>
+        <div class="card span-3"><div class="kpi"><div class="value" id="kpiStrategic">0</div><div class="label">Grandes estratégicas</div></div></div>
+
+        <div class="card span-12">
+          <h3>Filtros</h3>
+          <div class="form-row">
+            <div class="field-3"><label>Área</label><select id="filterArea" onchange="renderDashboard()"></select></div>
+            <div class="field-3"><label>Estado</label><select id="filterState" onchange="renderDashboard()"></select></div>
+            <div class="field-3"><label>Cuadrante</label><select id="filterQuadrant" onchange="renderDashboard()"></select></div>
+            <div class="field-3"><label>Mín. evaluadores</label><input id="filterMinVotes" type="number" min="0" value="0" onchange="renderDashboard()" /></div>
+          </div>
+        </div>
+
+        <div class="card span-8">
+          <h3>Matriz Impacto vs. Facilidad de ejecución</h3>
+          <div class="chart-wrap"><canvas id="matrixChart"></canvas></div>
+        </div>
+
+        <div class="card span-4">
+          <h3>Ranking general</h3>
+          <div id="rankingGeneral" class="ranking-list"></div>
+        </div>
+
+        <div class="card span-6">
+          <h3>Ranking por Impacto</h3>
+          <div id="rankingImpact" class="ranking-list"></div>
+        </div>
+        <div class="card span-6">
+          <h3>Ranking por Facilidad</h3>
+          <div id="rankingEase" class="ranking-list"></div>
+        </div>
+
+        <div class="card span-12">
+          <h3>Tabla consolidada</h3>
+          <div style="overflow-x:auto;"><table id="resultsTable"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminView" class="view">
+      <div class="grid">
+        <div class="card span-8">
+          <h2>Administrar iniciativas</h2>
+          <p class="help">Las 9 iniciativas oficiales vienen precargadas. Puede editar código, nombre, resumen, área, responsable y estado; los cambios se guardan en este navegador mediante localStorage.</p>
+          <form id="initiativeForm">
+            <input type="hidden" id="initiativeId" />
+            <div class="form-row">
+              <div class="field-3"><label>Código</label><input id="initiativeCode" required placeholder="Ej. TD-001" /></div>
+              <div class="field-9"><label>Nombre</label><input id="initiativeName" required placeholder="Nombre de la iniciativa" /></div>
+              <div class="field-12"><label>Resumen / descripción breve editable</label><textarea id="initiativeDesc" required placeholder="Ajuste aquí el resumen que verá el Comité al votar y revisar resultados."></textarea></div>
+              <div class="field-4"><label>Área patrocinadora</label><input id="initiativeArea" required /></div>
+              <div class="field-4"><label>Responsable funcional</label><input id="initiativeOwner" required /></div>
+              <div class="field-4"><label>Estado</label><select id="initiativeState"><option>Propuesta</option><option>Validación</option><option>Estructuración</option><option>Aprobada</option><option>En ejecución</option></select></div>
+            </div>
+            <div class="button-row">
+              <button class="btn-primary" type="submit">Guardar iniciativa</button>
+              <button class="btn-secondary" type="button" onclick="resetInitiativeForm()">Cancelar edición / limpiar formulario</button>
+            </div>
+          </form>
+          <hr style="border:0;border-top:1px solid var(--ccb-line);margin:20px 0;" />
+          <div style="overflow-x:auto;"><table id="initiativesTable"></table></div>
+        </div>
+
+        <div class="card span-4">
+          <h2>QR de votación</h2>
+          <p class="help">Publique este HTML en una URL accesible y comparta el QR con el Comité. En local, el QR abrirá esta misma ruta si el dispositivo la puede alcanzar.</p>
+          <div class="form-row">
+            <div class="field-12"><label>URL de votación</label><input id="voteUrl" /></div>
+            <div class="field-12"><label>Iniciativa específica para QR</label><select id="qrInitiativeSelect" onchange="buildQR()"></select></div>
+          </div>
+          <div class="button-row" style="margin-bottom:14px;"><button class="btn-primary" onclick="buildQR()">Generar QR</button><button class="btn-secondary" onclick="copyVoteUrl()">Copiar enlace</button></div>
+          <div class="qr-wrap"><div id="qrCode"></div></div>
+          <div class="footer-note">Para uso real multiusuario, conecte Firebase o Supabase en la sección Producción. Sin base compartida, cada navegador conservará sus propios votos.</div>
+        </div>
+
+        <div class="card span-12">
+          <h2>Importar iniciativas desde JSON</h2>
+          <p class="help">Pegue un arreglo JSON con campos: code, name, description, area, owner, state.</p>
+          <textarea id="jsonImport"></textarea>
+          <div class="button-row" style="margin-top:12px;"><button class="btn-warning" onclick="importInitiativesJSON()">Importar y reemplazar iniciativas</button><button class="btn-secondary" onclick="loadSampleJSON()">Cargar ejemplo editable</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="techView" class="view">
+      <div class="grid">
+        <div class="card span-12">
+          <h2>Preparación para producción multiusuario</h2>
+          <p class="help">La herramienta funciona en modo demo local. Para una sesión real del Comité con celulares, publique el archivo y active un almacenamiento compartido.</p>
+          <div class="alert alert-warning"><strong>Limitación del HTML estático:</strong> localStorage no sincroniza votos entre dispositivos. Cada navegador guarda su propia copia.</div>
+        </div>
+        <div class="card span-6">
+          <h3>Opción A: Firebase Firestore</h3>
+          <ol class="help">
+            <li>Crear proyecto en Firebase.</li>
+            <li>Activar Firestore Database.</li>
+            <li>Crear colecciones: <strong>initiatives</strong> y <strong>votes</strong>.</li>
+            <li>Insertar configuración en el bloque <code>PRODUCTION_CONFIG</code> del código.</li>
+            <li>Implementar reglas de seguridad según correo, dominio o token del comité.</li>
+            <li>Cambiar <code>STORAGE_MODE</code> de <code>local</code> a <code>firebase</code> y completar funciones marcadas como TODO.</li>
+          </ol>
+        </div>
+        <div class="card span-6">
+          <h3>Opción B: Supabase</h3>
+          <ol class="help">
+            <li>Crear proyecto en Supabase.</li>
+            <li>Crear tablas: <strong>initiatives</strong> y <strong>votes</strong>.</li>
+            <li>Insertar URL y anon key en <code>PRODUCTION_CONFIG</code>.</li>
+            <li>Definir Row Level Security para permitir voto controlado y lectura consolidada.</li>
+            <li>Cambiar <code>STORAGE_MODE</code> de <code>local</code> a <code>supabase</code> y completar funciones marcadas como TODO.</li>
+          </ol>
+        </div>
+        <div class="card span-12">
+          <h3>Modelo mínimo de datos sugerido</h3>
+          <pre style="white-space:pre-wrap;background:#f7f9fc;border:1px solid var(--ccb-line);padding:16px;border-radius:14px;overflow:auto;">initiatives: { id, code, name, description, area, owner, state, createdAt, updatedAt }
+votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4 }, createdAt, voterHash }</pre>
+          <p class="help">Para evitar duplicados, use un campo <strong>voterHash</strong> construido con correo institucional, rol o token único por evaluador. Si se desea anonimato, el hash debe generarse sin guardar el dato original.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /**********************************************************************
+     * CONFIGURACIÓN DE ALMACENAMIENTO
+     * STORAGE_MODE = 'local' para demo local con localStorage.
+     * STORAGE_MODE = 'firebase' o 'supabase' para producción.
+     * En producción, complete PRODUCTION_CONFIG y las funciones TODO del adaptador.
+     **********************************************************************/
+    const STORAGE_MODE = 'local';
+    const PRODUCTION_CONFIG = {
+      firebase: {
+        apiKey: 'TODO_FIREBASE_API_KEY',
+        authDomain: 'TODO_PROJECT.firebaseapp.com',
+        projectId: 'TODO_PROJECT_ID'
+      },
+      supabase: {
+        url: 'TODO_SUPABASE_URL',
+        anonKey: 'TODO_SUPABASE_ANON_KEY'
+      }
+    };
+
+    const LS_INITIATIVES = 'ccb_td_prioritization_initiatives_v2_only_9';
+    const LS_VOTES = 'ccb_td_prioritization_votes_v2_only_9';
+    const LS_PARTICIPANT = 'ccb_td_prioritization_participant_session_v1';
+
+    const impactCriteria = [
+      ['I1','Alineación estratégica','Conexión con prioridades institucionales, objetivos estratégicos, transformación del servicio y propósito de la Cámara.'],
+      ['I2','Prioridad institucional manifiesta','Respaldo, mandato o urgencia explícita desde alta dirección, Presidencia, Junta Directiva o prioridad de vigencia.'],
+      ['I3','Valor para empresarios, usuarios o colaboradores','Beneficio esperado para usuarios internos o externos: empresarios, afiliados, proveedores, colaboradores, ciudadanos u otros grupos de interés.'],
+      ['I4','Impacto operativo','Capacidad de reducir reprocesos, tiempos, fricciones, errores, cargas manuales o ineficiencias internas.'],
+      ['I5','Valor medible','Posibilidad de definir indicadores, medir beneficios y demostrar resultados financieros o no financieros.'],
+      ['I6','Urgencia institucional','Necesidad temporal por razones regulatorias, operativas, reputacionales, contractuales, estratégicas, de continuidad o ventana de oportunidad.'],
+      ['I7','Reutilización y escalabilidad','Capacidad de aprovechar capacidades existentes, replicar la solución en otros procesos y escalar valor institucional.'],
+      ['I8','Innovación aplicada y transformación digital','Uso pertinente de datos, automatización, IA, integración, analítica, canales digitales u otros habilitadores digitales.']
+    ];
+
+    const executionCriteria = [
+      ['E1','Factibilidad de implementación','Viabilidad práctica según recursos, capacidades, conocimiento, tecnología disponible, madurez del proceso y condiciones institucionales.'],
+      ['E2','Riesgo y cumplimiento','1 = riesgo alto/desfavorable. 5 = riesgo bajo, controlado y favorable.'],
+      ['E3','Adopción esperada','Probabilidad de uso, apropiación de nuevos comportamientos y sostenibilidad del cambio.'],
+      ['E4','Dependencias y complejidad de ejecución','1 = alta complejidad/desfavorable. 5 = baja complejidad/favorable.']
+    ];
+
+    const sampleInitiatives = [
+      {
+        id: cryptoId(),
+        code: 'TD-001',
+        name: 'P2P Excellence',
+        description: 'Transformación integral del ciclo de compras y pagos, desde la solicitud hasta el pago, con trazabilidad, analítica y automatización progresiva.',
+        area: 'Compras & Pagos',
+        owner: 'Compras, Tesorería, Contabilidad e Infraestructura',
+        state: 'Formulada'
+      },
+      {
+        id: cryptoId(),
+        code: 'TD-002',
+        name: 'Afiliados Excellence',
+        description: 'Fortalecimiento digital de la gestión comercial y de afiliados para mejorar seguimiento, experiencia, conversión y toma de decisiones.',
+        area: 'Gestión Comercial',
+        owner: 'Gestión de Afiliados / Comercial',
+        state: 'Formulada'
+      },
+      {
+        id: cryptoId(),
+        code: 'TD-003',
+        name: 'Logística & Inventarios Excellence',
+        description: 'Optimización de activos, inventarios, mantenimiento y logística mediante trazabilidad, control operativo y uso de información confiable.',
+        area: 'Activos & Logística',
+        owner: 'Activos, Inventarios e Infraestructura',
+        state: 'Formulada'
+      },
+      {
+        id: cryptoId(),
+        code: 'TD-004',
+        name: 'Archivo Excellence',
+        description: 'Modernización de la gestión documental y archivo, fortaleciendo digitalización, trazabilidad, consulta, conservación y gobierno documental.',
+        area: 'Gestión Documental',
+        owner: 'Gestión Documental / Archivo',
+        state: 'Formulada'
+      },
+      {
+        id: cryptoId(),
+        code: 'TD-005',
+        name: 'People Journey Excellence',
+        description: 'Transformación digital del ciclo de vida del colaborador, conectando Gestión Humana, SST, onboarding, formación, beneficios y desvinculación.',
+        area: 'GH & SST',
+        owner: 'Gestión Humana y SST',
+        state: 'Formulada'
+      },
+      {
+        id: cryptoId(),
+        code: 'TD-006',
+        name: 'Procesos Excellence CCB',
+        description: 'Fortalecimiento del sistema de gestión, mejora continua y rediseño de procesos para estandarizar, medir y sostener cambios operativos.',
+        area: 'SIG & Mejora Continua',
+        owner: 'Gestión de Procesos',
+        state: 'Formulada'
+      },
+      {
+        id: cryptoId(),
+        code: 'TD-007',
+        name: 'PMO Desarrollo Empresarial 360',
+        description: 'Evolución de la gestión de proyectos hacia una visión integral de portafolio, seguimiento, trazabilidad, indicadores y gestión de capacidad.',
+        area: 'Gestión de Proyectos',
+        owner: 'Gestión de Proyectos / Desarrollo Empresarial',
+        state: 'Formulada'
+      },
+      {
+        id: cryptoId(),
+        code: 'TD-008',
+        name: 'SR Excellence',
+        description: 'Optimización digital de servicios registrales para mejorar experiencia, eficiencia operativa, trazabilidad, automatización y analítica del servicio.',
+        area: 'Servicios Registrales',
+        owner: 'Servicios Registrales',
+        state: 'Formulada'
+      },
+      {
+        id: cryptoId(),
+        code: 'TD-009',
+        name: 'TI Excellence',
+        description: 'Fortalecimiento integral de la gestión de TI, infraestructura, soporte, servicios digitales, seguridad, continuidad, automatización y gobierno tecnológico.',
+        area: 'Tecnología de Información',
+        owner: 'Infraestructura TI / Servicios Digitales / Seguridad de la Información',
+        state: 'Formulada'
+      }
+    ];
+
+    let initiatives = [];
+    let votes = [];
+    let matrixChart = null;
+    let participantMode = false;
+    let voterSessionId = '';
+
+    document.addEventListener('DOMContentLoaded', initApp);
+
+    function initApp() {
+      document.getElementById('storageModePill').textContent = STORAGE_MODE === 'local' ? 'Modo demo local' : 'Modo producción: ' + STORAGE_MODE;
+      participantMode = isParticipantMode();
+      if (participantMode) document.body.classList.add('participant-mode');
+      voterSessionId = getOrCreateVoterSessionId();
+      renderVoterSessionBox();
+      bindNavigation();
+      loadData();
+      renderCriteria();
+      renderInitiativeSelectors();
+      renderAdmin();
+      renderDashboard();
+      buildQR();
+      handleUrlParams();
+      document.getElementById('voteForm').addEventListener('submit', submitVote);
+      document.getElementById('initiativeForm').addEventListener('submit', submitInitiative);
+      document.getElementById('initiativeSelect').addEventListener('change', renderSelectedInitiativeInfo);
+      document.getElementById('voterRole').addEventListener('input', () => { renderInitiativeSelectors(); renderSelectedInitiativeInfo(); });
+      window.addEventListener('resize', debounce(renderDashboard, 200));
+    }
+
+    function isParticipantMode() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('participante') === '1' || params.get('mode') === 'votar';
+    }
+
+    function bindNavigation() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => showView(btn.dataset.view));
+      });
+    }
+
+    function showView(viewId) {
+      if (participantMode && viewId !== 'voteView') viewId = 'voteView';
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+      const tab = document.querySelector(`[data-view="${viewId}"]`);
+      if (tab) tab.classList.add('active');
+      if (viewId === 'dashboardView') renderDashboard();
+      if (viewId === 'adminView') { renderAdmin(); buildQR(); }
+    }
+
+    function loadData() {
+      if (STORAGE_MODE !== 'local') {
+        // TODO PRODUCCIÓN: reemplazar por fetch desde Firebase/Supabase.
+        console.warn('Modo producción seleccionado. Complete adaptador de persistencia.');
+      }
+
+      // Versión cerrada: la plataforma trabaja con 9 iniciativas.
+      // Si ya existen 9 iniciativas guardadas, respeta sus ediciones locales
+      // incluso si se cambiaron nombres, códigos, áreas o resúmenes.
+      // Si hay más o menos de 9, restaura las 9 oficiales precargadas.
+      const storedInitiatives = JSON.parse(localStorage.getItem(LS_INITIATIVES) || 'null');
+
+      initiatives = Array.isArray(storedInitiatives) && storedInitiatives.length === 9
+        ? storedInitiatives
+        : sampleInitiatives;
+
+      // Mantener solo votos asociados a las 9 iniciativas vigentes.
+      const officialIds = new Set(initiatives.map(i => i.id));
+      votes = JSON.parse(localStorage.getItem(LS_VOTES) || '[]')
+        .filter(v => officialIds.has(v.initiativeId))
+        .map(v => ({ ...v, voterSessionId: v.voterSessionId || v.voterHash || simpleHash((v.voterRole || '') + '|legacy') }));
+      saveData();
+    }
+
+    function saveData() {
+      if (STORAGE_MODE !== 'local') {
+        // TODO PRODUCCIÓN: persistir en Firebase/Supabase.
+      }
+      localStorage.setItem(LS_INITIATIVES, JSON.stringify(initiatives));
+      localStorage.setItem(LS_VOTES, JSON.stringify(votes));
+    }
+
+    function renderCriteria() {
+      document.getElementById('impactCriteria').innerHTML = impactCriteria.map(c => criterionHtml(c)).join('');
+      document.getElementById('executionCriteria').innerHTML = executionCriteria.map(c => criterionHtml(c)).join('');
+    }
+
+    function criterionHtml([code, title, desc]) {
+      return `<div class="criteria-block">
+        <div class="criteria-head">
+          <div><div class="criteria-title">${code}. ${escapeHtml(title)}</div><div class="criteria-desc">${escapeHtml(desc)}</div></div>
+        </div>
+        <div class="score-options">
+          ${[1,2,3,4,5].map(score => `<div><input type="radio" id="${code}_${score}" name="${code}" value="${score}" required><label for="${code}_${score}">${score}</label></div>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    function renderInitiativeSelectors() {
+      const voteSelect = document.getElementById('initiativeSelect');
+      const previousValue = voteSelect?.value || '';
+      const forcedInitiativeId = new URLSearchParams(window.location.search).get('initiative') || '';
+
+      let availableInitiatives = initiatives.filter(i => !hasVotedForInitiative(voterSessionId, i.id));
+      if (forcedInitiativeId) {
+        availableInitiatives = availableInitiatives.filter(i => i.id === forcedInitiativeId);
+      }
+
+      const voteOptions = availableInitiatives.map(i => `<option value="${i.id}">${escapeHtml(i.code)} — ${escapeHtml(i.name)}</option>`).join('');
+      voteSelect.innerHTML = '<option value="">Seleccione una iniciativa</option>' + voteOptions;
+
+      if (previousValue && availableInitiatives.some(i => i.id === previousValue)) {
+        voteSelect.value = previousValue;
+      } else if (forcedInitiativeId && availableInitiatives.some(i => i.id === forcedInitiativeId)) {
+        voteSelect.value = forcedInitiativeId;
+      }
+
+      const allOptions = initiatives.map(i => `<option value="${i.id}">${escapeHtml(i.code)} — ${escapeHtml(i.name)}</option>`).join('');
+      document.getElementById('qrInitiativeSelect').innerHTML = '<option value="">Formulario general</option>' + allOptions;
+      renderSelectedInitiativeInfo();
+      updateFilters();
+    }
+
+    function renderSelectedInitiativeInfo() {
+      const role = document.getElementById('voterRole')?.value.trim() || '';
+      const id = document.getElementById('initiativeSelect').value;
+      const box = document.getElementById('selectedInitiativeInfo');
+      const i = initiatives.find(x => x.id === id);
+
+      if (!i) {
+        const forcedInitiativeId = new URLSearchParams(window.location.search).get('initiative') || '';
+        const pending = initiatives.filter(x => !hasVotedForInitiative(voterSessionId, x.id));
+        if (pending.length === 0) {
+          box.classList.remove('hidden');
+          box.innerHTML = '<strong>Evaluación completa.</strong><br>Este participante ya registró voto para todas las iniciativas disponibles en este dispositivo.';
+          return;
+        }
+        if (forcedInitiativeId && hasVotedForInitiative(voterSessionId, forcedInitiativeId)) {
+          box.classList.remove('hidden');
+          box.innerHTML = '<strong>Iniciativa ya evaluada.</strong><br>Esta iniciativa ya fue calificada por este participante. Los votos de otros usuarios no afectan esta lista.';
+          return;
+        }
+        box.classList.add('hidden');
+        return;
+      }
+
+      box.classList.remove('hidden');
+      box.innerHTML = `<strong>${escapeHtml(i.name)}</strong><br>${escapeHtml(i.description)}<br><span class="small">Área: ${escapeHtml(i.area)} | Responsable: ${escapeHtml(i.owner)} | Estado: ${escapeHtml(i.state)}</span>`;
+    }
+
+    function hasVotedForInitiative(sessionId, initiativeId) {
+      return votes.some(v => v.voterSessionId === sessionId && v.initiativeId === initiativeId);
+    }
+
+    function submitVote(e) {
+      e.preventDefault();
+      const initiativeId = document.getElementById('initiativeSelect').value;
+      const voterRole = document.getElementById('voterRole').value.trim();
+      if (!initiativeId || !voterRole) return showVoteAlert('Debe completar rol e iniciativa.', 'error');
+
+      const duplicate = hasVotedForInitiative(voterSessionId, initiativeId);
+      if (duplicate) {
+        renderInitiativeSelectors();
+        return showVoteAlert('Ya existe una evaluación local para este participante y esta iniciativa. La iniciativa se retiró solo de su lista personal.', 'error');
+      }
+
+      const scores = {};
+      [...impactCriteria, ...executionCriteria].forEach(([code]) => {
+        const checked = document.querySelector(`input[name="${code}"]:checked`);
+        if (checked) scores[code] = Number(checked.value);
+      });
+      if (Object.keys(scores).length !== 12) return showVoteAlert('Debe calificar todos los criterios antes de enviar.', 'error');
+
+      votes.push({ id: cryptoId(), initiativeId, voterRole, voterSessionId, scores, createdAt: new Date().toISOString(), voterHash: simpleHash(voterSessionId + '|' + initiativeId) });
+      saveData();
+      showVoteAlert('Evaluación registrada correctamente. Puede continuar con otra iniciativa pendiente.', 'success');
+      resetVoteForm(false);
+      document.getElementById('voterRole').value = voterRole;
+      renderInitiativeSelectors();
+      renderDashboard();
+    }
+
+    function resetVoteForm(clearMessage = true) {
+      document.getElementById('voteForm').reset();
+      renderInitiativeSelectors();
+      renderSelectedInitiativeInfo();
+      if (clearMessage) document.getElementById('voteAlert').innerHTML = '';
+    }
+
+    function showVoteAlert(message, type) {
+      const cls = type === 'success' ? 'alert-success' : 'alert-error';
+      document.getElementById('voteAlert').innerHTML = `<div class="alert ${cls}">${escapeHtml(message)}</div>`;
+    }
+
+    function submitInitiative(e) {
+      e.preventDefault();
+      const id = document.getElementById('initiativeId').value || cryptoId();
+      const record = {
+        id,
+        code: document.getElementById('initiativeCode').value.trim(),
+        name: document.getElementById('initiativeName').value.trim(),
+        description: document.getElementById('initiativeDesc').value.trim(),
+        area: document.getElementById('initiativeArea').value.trim(),
+        owner: document.getElementById('initiativeOwner').value.trim(),
+        state: document.getElementById('initiativeState').value
+      };
+      const idx = initiatives.findIndex(i => i.id === id);
+      if (idx >= 0) initiatives[idx] = record; else initiatives.push(record);
+      saveData();
+      resetInitiativeForm();
+      renderInitiativeSelectors();
+      renderAdmin();
+      renderDashboard();
+      buildQR();
+    }
+
+    function editInitiative(id) {
+      const i = initiatives.find(x => x.id === id);
+      if (!i) return;
+      document.getElementById('initiativeId').value = i.id;
+      document.getElementById('initiativeCode').value = i.code;
+      document.getElementById('initiativeName').value = i.name;
+      document.getElementById('initiativeDesc').value = i.description;
+      document.getElementById('initiativeArea').value = i.area;
+      document.getElementById('initiativeOwner').value = i.owner;
+      document.getElementById('initiativeState').value = i.state;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function deleteInitiative(id) {
+      const i = initiatives.find(x => x.id === id);
+      if (!i) return;
+      if (!confirm(`¿Eliminar la iniciativa "${i.name}"? También se eliminarán sus votos demo.`)) return;
+      initiatives = initiatives.filter(x => x.id !== id);
+      votes = votes.filter(v => v.initiativeId !== id);
+      saveData();
+      renderInitiativeSelectors();
+      renderAdmin();
+      renderDashboard();
+      buildQR();
+    }
+
+    function resetInitiativeForm() {
+      document.getElementById('initiativeForm').reset();
+      document.getElementById('initiativeId').value = '';
+    }
+
+    function renderAdmin() {
+      const rows = initiatives.map(i => `<tr>
+        <td><strong>${escapeHtml(i.code)}</strong></td>
+        <td>${escapeHtml(i.name)}<br><span class="small">${escapeHtml(i.description)}</span></td>
+        <td>${escapeHtml(i.area)}</td>
+        <td>${escapeHtml(i.owner)}</td>
+        <td>${statusBadge(i.state)}</td>
+        <td><div class="button-row"><button class="btn-secondary" onclick="editInitiative('${i.id}')">Editar</button><button class="btn-danger" onclick="deleteInitiative('${i.id}')">Eliminar</button></div></td>
+      </tr>`).join('');
+      document.getElementById('initiativesTable').innerHTML = `<thead><tr><th>Código</th><th>Iniciativa</th><th>Área</th><th>Responsable</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${rows || '<tr><td colspan="6">No hay iniciativas registradas.</td></tr>'}</tbody>`;
+      document.getElementById('voteUrl').value = getVoteUrl();
+    }
+
+    function statusBadge(state) {
+      const map = { 'Propuesta':'badge-gray', 'Validación':'badge-blue', 'Estructuración':'badge-yellow', 'Aprobada':'badge-green', 'En ejecución':'badge-green' };
+      return `<span class="badge ${map[state] || 'badge-gray'}">${escapeHtml(state)}</span>`;
+    }
+
+    function loadSampleJSON() {
+      document.getElementById('jsonImport').value = JSON.stringify(sampleInitiatives.map(({id, ...rest}) => rest), null, 2);
+    }
+
+    function importInitiativesJSON() {
+      try {
+        const parsed = JSON.parse(document.getElementById('jsonImport').value);
+        if (!Array.isArray(parsed)) throw new Error('Debe ser un arreglo JSON.');
+        initiatives = parsed.map(x => ({
+          id: x.id || cryptoId(),
+          code: x.code || '',
+          name: x.name || '',
+          description: x.description || '',
+          area: x.area || '',
+          owner: x.owner || '',
+          state: x.state || 'Propuesta'
+        })).filter(x => x.code && x.name);
+        votes = votes.filter(v => initiatives.some(i => i.id === v.initiativeId));
+        saveData();
+        renderInitiativeSelectors();
+        renderAdmin();
+        renderDashboard();
+        alert('Iniciativas importadas correctamente.');
+      } catch (err) {
+        alert('Error al importar JSON: ' + err.message);
+      }
+    }
+
+    function buildQR() {
+      const qrBox = document.getElementById('qrCode');
+      const selected = document.getElementById('qrInitiativeSelect')?.value || '';
+      const url = getVoteUrl(selected);
+      document.getElementById('voteUrl').value = url;
+      qrBox.innerHTML = '';
+      if (typeof QRCode === 'undefined') {
+        qrBox.innerHTML = '<span class="small">QRCode.js no cargó. Verifique conexión a internet.</span>';
+        return;
+      }
+      new QRCode(qrBox, { text: url, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M });
+    }
+
+    function getVoteUrl(initiativeId = '') {
+      const base = window.location.href.split('#')[0].split('?')[0];
+      const params = new URLSearchParams();
+      params.set('participante', '1');
+      if (initiativeId) params.set('initiative', initiativeId);
+      return `${base}?${params.toString()}#votar`;
+    }
+
+    function copyVoteUrl() {
+      const input = document.getElementById('voteUrl');
+      input.select();
+      navigator.clipboard?.writeText(input.value).then(() => alert('Enlace copiado.')).catch(() => document.execCommand('copy'));
+    }
+
+    function handleUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const initiativeId = params.get('initiative');
+      if (initiativeId && initiatives.some(i => i.id === initiativeId)) {
+        document.getElementById('initiativeSelect').value = initiativeId;
+        renderSelectedInitiativeInfo();
+      }
+      if (participantMode) {
+        showView('voteView');
+        return;
+      }
+      if (window.location.hash === '#resultados') showView('dashboardView');
+      if (window.location.hash === '#admin') showView('adminView');
+    }
+
+    function calculateResults() {
+      return initiatives.map(i => {
+        const initiativeVotes = votes.filter(v => v.initiativeId === i.id);
+        const avg = {};
+        [...impactCriteria, ...executionCriteria].forEach(([code]) => {
+          avg[code] = average(initiativeVotes.map(v => v.scores[code]).filter(n => typeof n === 'number'));
+        });
+        const impact = round(sum(impactCriteria.map(([code]) => avg[code] || 0)), 2);
+        const ease = round(sum(executionCriteria.map(([code]) => avg[code] || 0)), 2);
+        const total = round(impact + ease, 2);
+        const allVoteTotals = initiativeVotes.map(v => sum(Object.values(v.scores)));
+        const dispersion = round(stddev(allVoteTotals), 2);
+        const quadrant = getQuadrant(impact, ease, initiativeVotes.length);
+        return { ...i, votes: initiativeVotes.length, avg, impact, ease, total, dispersion, quadrant };
+      });
+    }
+
+    function getQuadrant(impact, ease, voteCount = 1) {
+      if (!voteCount) return { name: 'Sin evaluación', cls: 'badge-gray', recommendation: 'Pendiente de calificación por el Comité.' };
+      const highImpact = impact >= 32;
+      const highEase = ease >= 14;
+      if (highImpact && highEase) return { name: 'Ganancias rápidas', cls: 'badge-green', recommendation: 'Priorizar para ejecución temprana, piloto o primera ola.' };
+      if (highImpact && !highEase) return { name: 'Grandes iniciativas estratégicas', cls: 'badge-yellow', recommendation: 'Estructurar como proyecto formal con sponsor, alcance, roadmap, recursos, gobierno y gestión del cambio.' };
+      if (!highImpact && highEase) return { name: 'Mejoras menores', cls: 'badge-blue', recommendation: 'Evaluar conveniencia, delegar o incorporar en backlog táctico.' };
+      return { name: 'Replantear, postergar o descartar', cls: 'badge-red', recommendation: 'No priorizar salvo obligación normativa, riesgo institucional relevante o decisión expresa.' };
+    }
+
+    function impactLevel(score) {
+      if (score >= 32) return 'Impacto alto';
+      if (score >= 28) return 'Impacto medio-alto';
+      return 'Impacto bajo o insuficiente';
+    }
+
+    function easeLevel(score) {
+      if (score >= 14) return 'Alta facilidad';
+      if (score >= 10) return 'Facilidad media / requiere gestión';
+      return 'Baja facilidad';
+    }
+
+    function getFilteredResults() {
+      const area = document.getElementById('filterArea')?.value || '';
+      const state = document.getElementById('filterState')?.value || '';
+      const quadrant = document.getElementById('filterQuadrant')?.value || '';
+      const minVotes = Number(document.getElementById('filterMinVotes')?.value || 0);
+      return calculateResults().filter(r =>
+        (!area || r.area === area) &&
+        (!state || r.state === state) &&
+        (!quadrant || r.quadrant.name === quadrant) &&
+        (r.votes >= minVotes)
+      );
+    }
+
+    function updateFilters() {
+      const areaSel = document.getElementById('filterArea');
+      const stateSel = document.getElementById('filterState');
+      const qSel = document.getElementById('filterQuadrant');
+      if (!areaSel || !stateSel || !qSel) return;
+      const areas = [...new Set(initiatives.map(i => i.area).filter(Boolean))].sort();
+      const states = [...new Set(initiatives.map(i => i.state).filter(Boolean))].sort();
+      areaSel.innerHTML = '<option value="">Todas</option>' + areas.map(a => `<option>${escapeHtml(a)}</option>`).join('');
+      stateSel.innerHTML = '<option value="">Todos</option>' + states.map(s => `<option>${escapeHtml(s)}</option>`).join('');
+      qSel.innerHTML = '<option value="">Todos</option><option>Ganancias rápidas</option><option>Grandes iniciativas estratégicas</option><option>Mejoras menores</option><option>Replantear, postergar o descartar</option><option>Sin evaluación</option>';
+    }
+
+    function renderDashboard() {
+      if (!document.getElementById('dashboardView')) return;
+      updateFiltersPreserveValues();
+      const results = getFilteredResults();
+      const all = calculateResults();
+      document.getElementById('kpiInitiatives').textContent = all.length;
+      document.getElementById('kpiVotes').textContent = votes.length;
+      document.getElementById('kpiQuickWins').textContent = all.filter(r => r.quadrant.name === 'Ganancias rápidas').length;
+      document.getElementById('kpiStrategic').textContent = all.filter(r => r.quadrant.name === 'Grandes iniciativas estratégicas').length;
+      renderMatrix(results);
+      renderRanking('rankingGeneral', results, 'total');
+      renderRanking('rankingImpact', results, 'impact');
+      renderRanking('rankingEase', results, 'ease');
+      renderResultsTable(results);
+    }
+
+    function updateFiltersPreserveValues() {
+      const prev = {
+        area: document.getElementById('filterArea')?.value || '',
+        state: document.getElementById('filterState')?.value || '',
+        quadrant: document.getElementById('filterQuadrant')?.value || ''
+      };
+      updateFilters();
+      if (document.getElementById('filterArea')) document.getElementById('filterArea').value = prev.area;
+      if (document.getElementById('filterState')) document.getElementById('filterState').value = prev.state;
+      if (document.getElementById('filterQuadrant')) document.getElementById('filterQuadrant').value = prev.quadrant;
+    }
+
+    function renderMatrix(results) {
+      const ctx = document.getElementById('matrixChart');
+      if (!ctx) return;
+      if (matrixChart) matrixChart.destroy();
+      const evaluated = results.filter(r => r.votes > 0);
+      const quadrantPlugin = {
+        id: 'quadrantPlugin',
+        beforeDraw(chart) {
+          const { ctx, chartArea, scales } = chart;
+          if (!chartArea) return;
+          const x14 = scales.x.getPixelForValue(14);
+          const y32 = scales.y.getPixelForValue(32);
+          ctx.save();
+          ctx.fillStyle = 'rgba(31,138,91,0.08)'; ctx.fillRect(x14, chartArea.top, chartArea.right - x14, y32 - chartArea.top);
+          ctx.fillStyle = 'rgba(216,164,0,0.10)'; ctx.fillRect(chartArea.left, chartArea.top, x14 - chartArea.left, y32 - chartArea.top);
+          ctx.fillStyle = 'rgba(20,59,102,0.07)'; ctx.fillRect(x14, y32, chartArea.right - x14, chartArea.bottom - y32);
+          ctx.fillStyle = 'rgba(183,46,46,0.07)'; ctx.fillRect(chartArea.left, y32, x14 - chartArea.left, chartArea.bottom - y32);
+          ctx.strokeStyle = '#0b2341'; ctx.lineWidth = 2; ctx.setLineDash([6,6]);
+          ctx.beginPath(); ctx.moveTo(x14, chartArea.top); ctx.lineTo(x14, chartArea.bottom); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(chartArea.left, y32); ctx.lineTo(chartArea.right, y32); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#0b2341'; ctx.font = '700 12px Inter, Arial';
+          ctx.fillText('Ganancias rápidas', x14 + 10, chartArea.top + 20);
+          ctx.fillText('Grandes estratégicas', chartArea.left + 10, chartArea.top + 20);
+          ctx.fillText('Mejoras menores', x14 + 10, chartArea.bottom - 12);
+          ctx.fillText('Replantear/postergar', chartArea.left + 10, chartArea.bottom - 12);
+          ctx.restore();
+        }
+      };
+      const labelPlugin = {
+        id: 'labelPlugin',
+        afterDatasetsDraw(chart) {
+          const { ctx } = chart;
+          ctx.save();
+          ctx.font = '700 11px Inter, Arial';
+          ctx.fillStyle = '#0b2341';
+          chart.data.datasets[0].data.forEach((point, i) => {
+            const meta = chart.getDatasetMeta(0).data[i];
+            if (meta) ctx.fillText(point.code, meta.x + 8, meta.y - 8);
+          });
+          ctx.restore();
+        }
+      };
+      matrixChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Iniciativas',
+            data: evaluated.map(r => ({ x: r.ease, y: r.impact, code: r.code, name: r.name, quadrant: r.quadrant.name, total: r.total, votes: r.votes, recommendation: r.quadrant.recommendation })),
+            pointRadius: 8,
+            pointHoverRadius: 11,
+            backgroundColor: '#143b66',
+            borderColor: '#0b2341',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label(ctx) {
+                  const p = ctx.raw;
+                  return [`${p.code} - ${p.name}`, `Impacto: ${p.y}/40`, `Facilidad: ${p.x}/20`, `Total: ${p.total}/60`, `Cuadrante: ${p.quadrant}`, `Votos: ${p.votes}`];
+                },
+                afterLabel(ctx) { return ctx.raw.recommendation; }
+              }
+            }
+          },
+          scales: {
+            x: { min: 0, max: 20, title: { display: true, text: 'Facilidad de ejecución' }, grid: { color: '#d9e0e8' } },
+            y: { min: 0, max: 40, title: { display: true, text: 'Impacto' }, grid: { color: '#d9e0e8' } }
+          }
+        },
+        plugins: [quadrantPlugin, labelPlugin]
+      });
+    }
+
+    function renderRanking(containerId, results, metric) {
+      const ranked = [...results].filter(r => r.votes > 0).sort((a,b) => b[metric] - a[metric]);
+      const label = metric === 'total' ? 'Total' : metric === 'impact' ? 'Impacto' : 'Facilidad';
+      document.getElementById(containerId).innerHTML = ranked.length ? ranked.map((r, idx) => `<div class="rank-item">
+        <div class="rank-index">${idx + 1}</div>
+        <div class="rank-main"><strong>${escapeHtml(r.code)} — ${escapeHtml(r.name)}</strong><span>${escapeHtml(r.quadrant.name)} | ${r.votes} voto(s)</span></div>
+        <div class="rank-score">${r[metric]} <span class="small">${label}</span></div>
+      </div>`).join('') : '<p class="help">Aún no hay evaluaciones para mostrar ranking.</p>';
+    }
+
+    function renderResultsTable(results) {
+      const ranked = [...results].sort((a,b) => b.total - a.total);
+      const rows = ranked.map((r, idx) => `<tr>
+        <td><strong>${idx + 1}</strong></td>
+        <td><strong>${escapeHtml(r.code)} — ${escapeHtml(r.name)}</strong><br><span class="small">${escapeHtml(r.area)} | ${escapeHtml(r.state)}</span></td>
+        <td>${r.impact}<br><span class="small">${impactLevel(r.impact)}</span></td>
+        <td>${r.ease}<br><span class="small">${easeLevel(r.ease)}</span></td>
+        <td><strong>${r.total}</strong></td>
+        <td><span class="badge ${r.quadrant.cls}">${escapeHtml(r.quadrant.name)}</span></td>
+        <td>${r.votes}</td>
+        <td>${r.dispersion || 0}</td>
+        <td>${escapeHtml(r.quadrant.recommendation)}</td>
+      </tr>`).join('');
+      document.getElementById('resultsTable').innerHTML = `<thead><tr><th>Pos.</th><th>Iniciativa</th><th>Impacto</th><th>Facilidad</th><th>Total</th><th>Cuadrante</th><th>Evaluadores</th><th>Dispersión</th><th>Orientación</th></tr></thead><tbody>${rows || '<tr><td colspan="9">No hay resultados para los filtros seleccionados.</td></tr>'}</tbody>`;
+    }
+
+    function exportCSV() {
+      const results = calculateResults().sort((a,b) => b.total - a.total);
+      const headers = ['posicion','codigo','iniciativa','area','estado','impacto','nivel_impacto','facilidad','nivel_facilidad','total','cuadrante','evaluadores','dispersion','recomendacion'];
+      const rows = results.map((r, idx) => [idx+1, r.code, r.name, r.area, r.state, r.impact, impactLevel(r.impact), r.ease, easeLevel(r.ease), r.total, r.quadrant.name, r.votes, r.dispersion, r.quadrant.recommendation]);
+      downloadFile('resultados_priorizacion_td_ccb.csv', toCSV([headers, ...rows]), 'text/csv;charset=utf-8;');
+    }
+
+    function exportJSON() {
+      const payload = { generatedAt: new Date().toISOString(), thresholds: { highImpact: 32, highEase: 14 }, results: calculateResults().sort((a,b) => b.total - a.total) };
+      downloadFile('resumen_priorizacion_td_ccb.json', JSON.stringify(payload, null, 2), 'application/json;charset=utf-8;');
+    }
+
+    function clearVotes() {
+      if (!confirm('¿Limpiar todos los votos guardados en este navegador?')) return;
+      votes = [];
+      saveData();
+      renderDashboard();
+      alert('Votos demo eliminados.');
+    }
+
+    function downloadFile(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function toCSV(rows) {
+      return rows.map(row => row.map(cell => '"' + String(cell ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
+    }
+
+    function average(values) { return values.length ? sum(values) / values.length : 0; }
+    function sum(values) { return values.reduce((a,b) => a + Number(b || 0), 0); }
+    function round(n, d=2) { return Math.round((n + Number.EPSILON) * Math.pow(10,d)) / Math.pow(10,d); }
+    function stddev(values) {
+      if (values.length < 2) return 0;
+      const avg = average(values);
+      const variance = average(values.map(v => Math.pow(v - avg, 2)));
+      return Math.sqrt(variance);
+    }
+    function getOrCreateVoterSessionId() {
+      let id = localStorage.getItem(LS_PARTICIPANT);
+      if (!id) {
+        id = 'votante_' + Math.random().toString(36).slice(2, 8).toUpperCase();
+        localStorage.setItem(LS_PARTICIPANT, id);
+      }
+      return id;
+    }
+
+    function resetParticipantSession() {
+      if (!confirm('Esto cambiará la sesión de votante en este dispositivo. Úselo solo si otra persona va a votar desde el mismo navegador. ¿Continuar?')) return;
+      localStorage.removeItem(LS_PARTICIPANT);
+      voterSessionId = getOrCreateVoterSessionId();
+      renderVoterSessionBox();
+      resetVoteForm();
+      renderInitiativeSelectors();
+      showVoteAlert('Sesión de votante cambiada. Ahora este dispositivo tendrá una lista de iniciativas pendiente independiente.', 'success');
+    }
+
+    function renderVoterSessionBox() {
+      const box = document.getElementById('voterSessionBox');
+      if (!box) return;
+      box.innerHTML = `Sesión de votante: <strong>${escapeHtml(voterSessionId)}</strong>. Esta sesión se usa para ocultar únicamente las iniciativas que este participante ya votó. Los votos de otros usuarios no desaparecen de su lista. <button type="button" onclick="resetParticipantSession()">Cambiar votante</button>`;
+    }
+
+    function cryptoId() { return 'id_' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+    function normalize(str) { return String(str || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+    function simpleHash(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+      return 'h_' + Math.abs(h).toString(36);
+    }
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    }
+    function debounce(fn, wait) {
+      let t;
+      return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+    }
+
+    /**********************************************************************
+     * ADAPTADOR DE PRODUCCIÓN - REFERENCIA
+     * Para Firebase o Supabase, reemplace loadData/saveData por llamadas reales.
+     * Mantenga las mismas estructuras de datos para no tocar UI ni cálculos.
+     **********************************************************************/
+    async function productionFetchInitiatives() {
+      if (STORAGE_MODE === 'firebase') {
+        // TODO: Inicializar Firebase, leer colección initiatives y retornar arreglo.
+      }
+      if (STORAGE_MODE === 'supabase') {
+        // TODO: Crear cliente Supabase, leer tabla initiatives y retornar arreglo.
+      }
+      return [];
+    }
+
+    async function productionSaveVote(vote) {
+      if (STORAGE_MODE === 'firebase') {
+        // TODO: Guardar en Firestore collection('votes').add(vote).
+      }
+      if (STORAGE_MODE === 'supabase') {
+        // TODO: supabase.from('votes').insert(vote).
+      }
+    }
+  </script>
+</body>
+</html>
