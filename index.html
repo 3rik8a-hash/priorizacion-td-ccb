@@ -77,6 +77,46 @@
       white-space: nowrap;
     }
 
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+
+    /* El indicador tecnico de modo de almacenamiento se oculta para una experiencia mas limpia. */
+    #storageModePill {
+      display: none !important;
+    }
+
+    .toolbar-toggle {
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      color: var(--white);
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .toolbar-toggle:hover {
+      background: var(--white);
+      color: var(--ccb-blue);
+    }
+
+    body.options-collapsed header nav,
+    body.options-collapsed #storageModePill {
+      display: none !important;
+    }
+
+    body.options-collapsed header {
+      padding-bottom: 18px;
+    }
+
     nav {
       max-width: 1280px;
       margin: 18px auto 0;
@@ -380,6 +420,28 @@
       line-height: 1.45;
     }
 
+
+
+    body.participant-mode header nav,
+    body.participant-mode #storageModePill,
+    body.participant-mode #adminToolbarToggle {
+      display: none !important;
+    }
+
+    body.participant-mode .header-inner {
+      justify-content: center;
+      text-align: center;
+      padding-bottom: 8px;
+    }
+
+    body.participant-mode .brand p {
+      display: none;
+    }
+
+    body.participant-mode main {
+      padding-top: 18px;
+    }
+
     @media (max-width: 980px) {
       .span-8, .span-6, .span-4, .span-3 { grid-column: span 12; }
       .field-6, .field-4, .field-3 { grid-column: span 12; }
@@ -403,7 +465,10 @@
         <h1>Priorización de Iniciativas TD</h1>
         <p>Herramienta ejecutiva para calificar impacto, facilidad de ejecución, consolidar votos del comité y ubicar iniciativas en matriz de decisión.</p>
       </div>
-      <div class="mode-pill" id="storageModePill">Modo demo local</div>
+      <div class="header-actions">
+        <div class="mode-pill" id="storageModePill">Modo demo local</div>
+        <button type="button" class="toolbar-toggle" id="adminToolbarToggle" aria-expanded="true">Ocultar opciones</button>
+      </div>
     </div>
     <nav>
       <button class="tab-btn active" data-view="voteView">Votar</button>
@@ -722,7 +787,9 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
     document.addEventListener('DOMContentLoaded', initApp);
 
     async function initApp() {
-      document.getElementById('storageModePill').textContent = STORAGE_MODE === 'local' ? 'Modo demo local' : 'Modo producción: ' + STORAGE_MODE;
+      const storageModePill = document.getElementById('storageModePill');
+      if (storageModePill) storageModePill.textContent = '';
+      bindToolbarToggle();
       participantMode = isParticipantMode();
       if (participantMode) document.body.classList.add('participant-mode');
       voterSessionId = getOrCreateVoterSessionId();
@@ -742,9 +809,19 @@ votes: { id, initiativeId, voterRole, voterSessionId, scores: { I1...I8, E1...E4
       window.addEventListener('resize', debounce(renderDashboard, 200));
     }
 
+    function bindToolbarToggle() {
+      const toggle = document.getElementById('adminToolbarToggle');
+      if (!toggle) return;
+      toggle.addEventListener('click', () => {
+        const collapsed = document.body.classList.toggle('options-collapsed');
+        toggle.textContent = collapsed ? 'Mostrar opciones' : 'Ocultar opciones';
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+      });
+    }
+
     function isParticipantMode() {
       const params = new URLSearchParams(window.location.search);
-      return params.get('participante') === '1' || params.get('mode') === 'votar';
+      return params.get('participante') === '1' || params.get('mode') === 'votar' || window.location.hash === '#votar';
     }
 
     function bindNavigation() {
